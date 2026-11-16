@@ -1,12 +1,17 @@
 name: Auslastung sammeln
 
+# Wird alle 15 Minuten von außen (cron-job.org) über die GitHub-API gestartet,
+# weil GitHubs eigener Zeitplan viele Läufe auslässt.
 on:
-  schedule:
-    - cron: "*/15 5-21 * * *"   # alle 15 Min, ca. 6–23 Uhr Wiener Zeit (Cron läuft in UTC)
-  workflow_dispatch:            # manuell starten zum Testen
+  workflow_dispatch:
 
 permissions:
   contents: write
+
+# Nie zwei Läufe gleichzeitig, sonst kollidieren die Commits
+concurrency:
+  group: collect
+  cancel-in-progress: false
 
 jobs:
   collect:
@@ -22,5 +27,7 @@ jobs:
           git config user.name "auslastung-bot"
           git config user.email "bot@users.noreply.github.com"
           git add data/auslastung.csv
-          git diff --cached --quiet || git commit -m "Auslastung $(date -u +%FT%H:%M)"
+          git diff --cached --quiet && exit 0
+          git commit -m "Auslastung $(date -u +%FT%H:%M)"
+          git pull --rebase
           git push
